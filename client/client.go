@@ -24,6 +24,7 @@ func main() {
 
 	// Creating a test Task
 	task := pb.Task{
+		Id: "109",
 		Description: "Do something",
 		Status:      "Created",
 	}
@@ -35,9 +36,9 @@ func main() {
 	log.Printf("TaskID: %s created succesfully", r.Value)
 
 	// Testing GetTask
-	t, err := c.GetTask(ctx, r)
-	if err != nil {
-		log.Fatalf("could not get a task: %v", err)
-	}
-	log.Printf("TaskID: %s get operation succesfully", t.Id)
+	//t, err := c.GetTask(ctx, r)
+	//if err != nil {
+	//	log.Fatalf("could not get a task: %v", err)
+	//}
+	//log.Printf("TaskID: %s get operation succesfully", t.Id)
 }

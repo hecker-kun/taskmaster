@@ -2,15 +2,27 @@ package main
 
 import (
 	"context"
-	"github.com/gofrs/uuid"
+	"fmt"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"log"
+	"net"
 	"sync"
 
 	pb "taskmaster/service/proto"
 )
 
 const port = ":9055"
+
+var (
+	mongoCtx context.Context
+	taskDb *mongo.Collection
+	db *mongo.Client
+)
 
 type server struct {
 	taskStore map[string]*pb.Task
@@ -43,19 +55,55 @@ func (s *server) GetTask(ctx context.Context, id *pb.TaskID) (*pb.Task, error) {
 }
 
 func (s *server) CreateTask(ctx context.Context, in *pb.Task) (*pb.TaskID, error) {
-	out, err := uuid.NewV4()
+	data := TaskObject{
+		//ID:          primitive.ObjectID{},
+		Description: in.Description,
+		Status:      in.Status,
+	}
+
+	res, err := taskDb.InsertOne(mongoCtx, data)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Error while generating Task ID", err)
+		return nil, status.Errorf(codes.Internal, fmt.Sprintf("Internal error: %v", err))
 	}
-	in.Id = out.String()
+	taskId := res.InsertedID.(primitive.ObjectID)
 
-	s.Lock()
-	if s.taskStore == nil {
-		s.taskStore = make(map[string]*pb.Task)
-	}
-
-	s.taskStore[in.Id] = in
-	s.Unlock()
+	in.Id = taskId.Hex()
 
 	return &pb.TaskID{Value: in.Id}, status.New(codes.OK, "").Err()
+}
+
+type TaskObject struct {
+	ID primitive.ObjectID `bson:"id,omitempty"`
+	Description string `bson:"description"`
+	Status string `bson:"status"`
+}
+
+func main() {
+	lis, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+
+	srv := grpc.NewServer()
+	pb.RegisterTaskmasterServer(srv, &server{})
+
+	// Connecting to MongoDB server
+	mongoCtx = context.Background()
+	db, err := mongo.Connect(mongoCtx, options.Client().ApplyURI("mongodb://localhost:27017"))
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	err = db.Ping(mongoCtx, nil)
+	if err != nil {
+		log.Fatalf("Failed to connect to MongoDB: %v", err)
+	} else {
+		log.Printf("Connected to MongoDB")
+	}
+	taskDb = db.Database("taskmaster").Collection("tasks")
+
+	log.Printf("Starting gRPC listener on port %s", port)
+	if err := srv.Serve(lis); err != nil {
+		log.Fatalf("failed to server: %v", err)
+	}
 }
