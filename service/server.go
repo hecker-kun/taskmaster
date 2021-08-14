@@ -3,11 +3,8 @@ package main
 import (
 	"context"
 	"github.com/gofrs/uuid"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
-	"log"
-	"net"
 	"sync"
 
 	pb "taskmaster/service/proto"
@@ -61,19 +58,4 @@ func (s *server) CreateTask(ctx context.Context, in *pb.Task) (*pb.TaskID, error
 	s.Unlock()
 
 	return &pb.TaskID{Value: in.Id}, status.New(codes.OK, "").Err()
-}
-
-func main() {
-	lis, err := net.Listen("tcp", port)
-	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
-	}
-
-	srv := grpc.NewServer()
-	pb.RegisterTaskmasterServer(srv, &server{})
-
-	log.Printf("Sarting gRPC listener on port %s", port)
-	if err := srv.Serve(lis); err != nil {
-		log.Fatalf("failed to server: %v", err)
-	}
 }
