@@ -25,7 +25,7 @@ func main() {
 	// Creating a test Task
 	task := pb.Task{
 		Id: "109",
-		Description: "Implement MongoDB",
+		Description: "Want to delete",
 		Status:      "Done",
 	}
 
@@ -40,4 +40,10 @@ func main() {
 		log.Fatalf("task non found: %v", err)
 	}
 	log.Println(t.String())
+
+	_, err = c.DeleteTask(ctx, r)
+	if err != nil {
+		log.Printf("error while deleting task: %s", err)
+	}
+	log.Printf("Task with id=[%s] deleted succesfully", r.String())
 }

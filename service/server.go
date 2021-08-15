@@ -32,7 +32,22 @@ type server struct {
 }
 
 func (s *server) DeleteTask(ctx context.Context, id *pb.TaskID) (*pb.Empty, error) {
-	panic("implement me")
+	tid, err := primitive.ObjectIDFromHex(id.GetValue())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Could not convert to ObjectID: %v"), err)
+	}
+
+	_, err = taskDb.DeleteOne(ctx, bson.M{"_id": tid})
+	if err != nil {
+		return nil, status.Errorf(
+			codes.NotFound,
+			fmt.Sprintf("Could not find/delete task with id %s: %v"),
+			id.GetValue(),
+			err,
+		)
+	}
+
+	return &pb.Empty{}, nil
 }
 
 func (s *server) DeleteAllTasks(ctx context.Context, empty *pb.Empty) (*pb.Empty, error) {
