@@ -37,7 +37,9 @@ func (s *server) DeleteTask(ctx context.Context, id *pb.TaskID) (*pb.Empty, erro
 		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Could not convert to ObjectID: %v"), err)
 	}
 
+	s.Lock()
 	_, err = taskDb.DeleteOne(ctx, bson.M{"_id": tid})
+	s.Unlock()
 	if err != nil {
 		return nil, status.Errorf(
 			codes.NotFound,
