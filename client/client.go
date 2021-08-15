@@ -19,14 +19,14 @@ func main() {
 
 	c := pb.NewTaskmasterClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	// Creating a test Task
 	task := pb.Task{
 		Id: "109",
-		Description: "Do something",
-		Status:      "Created",
+		Description: "Implement MongoDB",
+		Status:      "Done",
 	}
 
 	r, err := c.CreateTask(ctx, &task)
@@ -35,10 +35,9 @@ func main() {
 	}
 	log.Printf("TaskID: %s created succesfully", r.Value)
 
-	// Testing GetTask
-	//t, err := c.GetTask(ctx, r)
-	//if err != nil {
-	//	log.Fatalf("could not get a task: %v", err)
-	//}
-	//log.Printf("TaskID: %s get operation succesfully", t.Id)
+	t, err := c.GetTask(ctx, r)
+	if err != nil {
+		log.Fatalf("task non found: %v", err)
+	}
+	log.Println(t.String())
 }

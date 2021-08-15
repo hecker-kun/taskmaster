@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -25,7 +26,6 @@ var (
 )
 
 type server struct {
-	taskStore map[string]*pb.Task
 	*pb.UnimplementedTaskmasterServer
 
 	sync.Mutex
@@ -44,14 +44,31 @@ func (s *server) GetAllTasks(ctx context.Context, empty *pb.Empty) (*pb.TaskList
 }
 
 func (s *server) GetTask(ctx context.Context, id *pb.TaskID) (*pb.Task, error) {
-	s.Lock()
-	task, ok := s.taskStore[id.Value]
-	s.Unlock()
-	if !ok {
-		return nil, status.Errorf(codes.NotFound, "Task does not exist", id.Value)
+	tid, err := primitive.ObjectIDFromHex(id.GetValue())
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Could not convert to ObjectID: %v", err))
+	}
+	result := taskDb.FindOne(ctx, bson.M{"_id": tid})
+
+	// Create an empty TaskObject to write our decode result to
+	data := TaskObject{}
+	// Decode and write to data
+	if err := result.Decode(&data); err != nil {
+		return nil, status.Errorf(
+			codes.NotFound,
+			fmt.Sprintf("Could not find task with ObjectID %s: %v"),
+			id.GetValue(),
+			err,
+		)
 	}
 
-	return task, status.New(codes.OK, "").Err()
+	response := &pb.Task{
+		Description: data.Description,
+		Status:      data.Status,
+		Id:          tid.Hex(),
+	}
+
+	return response, status.New(codes.OK, "").Err()
 }
 
 func (s *server) CreateTask(ctx context.Context, in *pb.Task) (*pb.TaskID, error) {
@@ -65,9 +82,9 @@ func (s *server) CreateTask(ctx context.Context, in *pb.Task) (*pb.TaskID, error
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("Internal error: %v", err))
 	}
-	taskId := res.InsertedID.(primitive.ObjectID)
+	tid := res.InsertedID.(primitive.ObjectID)
 
-	in.Id = taskId.Hex()
+	in.Id = tid.Hex()
 
 	return &pb.TaskID{Value: in.Id}, status.New(codes.OK, "").Err()
 }
@@ -89,7 +106,7 @@ func main() {
 
 	// Connecting to MongoDB server
 	mongoCtx = context.Background()
-	db, err := mongo.Connect(mongoCtx, options.Client().ApplyURI("mongodb://localhost:27017"))
+	db, err = mongo.Connect(mongoCtx, options.Client().ApplyURI("mongodb://localhost:27017"))
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
