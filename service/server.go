@@ -48,7 +48,9 @@ func (s *server) GetTask(ctx context.Context, id *pb.TaskID) (*pb.Task, error) {
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Could not convert to ObjectID: %v", err))
 	}
+	s.Lock()
 	result := taskDb.FindOne(ctx, bson.M{"_id": tid})
+	s.Unlock()
 
 	// Create an empty TaskObject to write our decode result to
 	data := TaskObject{}
@@ -77,8 +79,9 @@ func (s *server) CreateTask(ctx context.Context, in *pb.Task) (*pb.TaskID, error
 		Description: in.Description,
 		Status:      in.Status,
 	}
-
+	s.Lock()
 	res, err := taskDb.InsertOne(mongoCtx, data)
+	s.Unlock()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, fmt.Sprintf("Internal error: %v", err))
 	}
