@@ -22,28 +22,35 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	// Creating a test Task
 	task := pb.Task{
-		Id: "109",
-		Description: "Want to delete",
-		Status:      "Done",
+		Description: "Fourth",
+		Status:      "Canceled",
+		Id:          "105",
 	}
-
-	r, err := c.CreateTask(ctx, &task)
+	r, err := c.CreateTask(ctx, &pb.CreateTaskReq{Task: &task})
 	if err != nil {
-		log.Fatalf("could not create a task: %v", err)
+		log.Fatalf("failed to create the task: %v", err)
 	}
-	log.Printf("TaskID: %s created succesfully", r.Value)
+	log.Printf(r.String())
 
-	t, err := c.GetTask(ctx, r)
-	if err != nil {
-		log.Fatalf("task non found: %v", err)
-	}
-	log.Println(t.String())
+	// Test call GetTask()
+	//t, err := c.GetTask(ctx, &pb.GetTaskReq{Id: r.Task.GetId()})
+	//if err != nil {
+	//	log.Fatalf("failed to get the task: %v", err)
+	//}
+	//log.Printf(t.String())
 
-	_, err = c.DeleteTask(ctx, r)
-	if err != nil {
-		log.Printf("error while deleting task: %s", err)
-	}
-	log.Printf("Task with id=[%s] deleted succesfully", r.String())
+	// Test call DeleteTask()
+	//_, err = c.DeleteTask(ctx, &pb.DeleteTaskReq{Id: r.Task.GetId()})
+	//if err != nil {
+	//	log.Fatalf("failed to delete the task: %v", err)
+	//}
+	//log.Printf("the task was deleted successfully")
+
+	// Test call DeleteAllTasks()
+	//_, err = c.DeleteAllTasks(ctx, &pb.Empty{})
+	//if err != nil {
+	//	log.Fatalf("failed to delete all tasks")
+	//}
+	//log.Printf("all tasks have been deleted")
 }

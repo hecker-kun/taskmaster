@@ -21,8 +21,8 @@ const port = ":9055"
 
 var (
 	mongoCtx context.Context
-	taskDb *mongo.Collection
-	db *mongo.Client
+	taskdb   *mongo.Collection
+	db       *mongo.Client
 )
 
 type server struct {
@@ -31,88 +31,93 @@ type server struct {
 	sync.Mutex
 }
 
-func (s *server) DeleteTask(ctx context.Context, id *pb.TaskID) (*pb.Empty, error) {
-	tid, err := primitive.ObjectIDFromHex(id.GetValue())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Could not convert to ObjectID: %v"), err)
-	}
-
-	s.Lock()
-	_, err = taskDb.DeleteOne(ctx, bson.M{"_id": tid})
-	s.Unlock()
-	if err != nil {
-		return nil, status.Errorf(
-			codes.NotFound,
-			fmt.Sprintf("Could not find/delete task with id %s: %v"),
-			id.GetValue(),
-			err,
-		)
-	}
-
-	return &pb.Empty{}, nil
-}
-
-func (s *server) DeleteAllTasks(ctx context.Context, empty *pb.Empty) (*pb.Empty, error) {
-	panic("implement me")
-}
-
-func (s *server) GetAllTasks(ctx context.Context, empty *pb.Empty) (*pb.TaskList, error) {
-	panic("implement me")
-}
-
-func (s *server) GetTask(ctx context.Context, id *pb.TaskID) (*pb.Task, error) {
-	tid, err := primitive.ObjectIDFromHex(id.GetValue())
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, fmt.Sprintf("Could not convert to ObjectID: %v", err))
-	}
-	s.Lock()
-	result := taskDb.FindOne(ctx, bson.M{"_id": tid})
-	s.Unlock()
-
-	// Create an empty TaskObject to write our decode result to
-	data := TaskObject{}
-	// Decode and write to data
-	if err := result.Decode(&data); err != nil {
-		return nil, status.Errorf(
-			codes.NotFound,
-			fmt.Sprintf("Could not find task with ObjectID %s: %v"),
-			id.GetValue(),
-			err,
-		)
-	}
-
-	response := &pb.Task{
-		Description: data.Description,
-		Status:      data.Status,
-		Id:          tid.Hex(),
-	}
-
-	return response, status.New(codes.OK, "").Err()
-}
-
-func (s *server) CreateTask(ctx context.Context, in *pb.Task) (*pb.TaskID, error) {
+func (s *server) CreateTask(ctx context.Context, req *pb.CreateTaskReq) (*pb.CreateTaskRes, error) {
+	task := req.GetTask()
 	data := TaskObject{
-		//ID:          primitive.ObjectID{},
-		Description: in.Description,
-		Status:      in.Status,
+		Description: task.GetDescription(),
+		Status:      task.GetStatus(),
 	}
-	s.Lock()
-	res, err := taskDb.InsertOne(mongoCtx, data)
-	s.Unlock()
+
+	result, err := taskdb.InsertOne(mongoCtx, data)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, fmt.Sprintf("Internal error: %v", err))
+		return nil, status.Errorf(
+			codes.Internal,
+			fmt.Sprintf("Internal error: %v"),
+			err,
+		)
 	}
-	tid := res.InsertedID.(primitive.ObjectID)
 
-	in.Id = tid.Hex()
+	tid := result.InsertedID.(primitive.ObjectID)
+	task.Id = tid.Hex()
 
-	return &pb.TaskID{Value: in.Id}, status.New(codes.OK, "").Err()
+	return &pb.CreateTaskRes{Task: task}, nil
+}
+
+func (s *server) DeleteTask(ctx context.Context, req *pb.DeleteTaskReq) (*pb.DeleteTaskRes, error) {
+	tid, err := primitive.ObjectIDFromHex(req.GetId())
+	if err != nil {
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			fmt.Sprintf("Could not convert to ObjectID"),
+		)
+	}
+
+	_, err = taskdb.DeleteOne(ctx, bson.M{"_id": tid})
+	if err != nil {
+		return nil, status.Errorf(
+			codes.NotFound,
+			fmt.Sprintf("Task with id %s not found in database", tid.String()),
+		)
+	}
+
+	return &pb.DeleteTaskRes{Success: true}, nil
+}
+
+func (s *server) GetTask(ctx context.Context, req *pb.GetTaskReq) (*pb.GetTaskRes, error) {
+	tid, err := primitive.ObjectIDFromHex(req.GetId())
+	if err != nil {
+		return nil, status.Errorf(
+			codes.InvalidArgument,
+			fmt.Sprintf("Could not convert to ObjectID"),
+			err,
+		)
+	}
+
+	result := taskdb.FindOne(ctx, bson.M{"_id": tid})
+	data := TaskObject{}
+
+	if err := result.Decode(&data); err != nil {
+		return nil, status.Errorf(codes.NotFound, fmt.Sprintf("Task not found: %v"), err)
+	}
+
+	resp := &pb.GetTaskRes{
+		Task: &pb.Task{
+			Description: data.Description,
+			Status:      data.Status,
+			Id:          tid.Hex(),
+		},
+	}
+
+	return resp, nil
+}
+
+func (s *server) DeleteAllTasks(ctx context.Context, empty *pb.Empty) (*pb.DeleteAllTasksRes, error) {
+	_, err := taskdb.DeleteMany(ctx, bson.M{})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, fmt.Sprintf("can not delete all tasks of collection"))
+	}
+
+	return &pb.DeleteAllTasksRes{Success: true}, nil
+}
+
+func (s *server) GetAllTasks(req *pb.GetAllTasksReq, stream pb.Taskmaster_GetAllTasksServer) error {
+	panic("implement me")
 }
 
 type TaskObject struct {
-	ID primitive.ObjectID `bson:"id,omitempty"`
-	Description string `bson:"description"`
-	Status string `bson:"status"`
+	ID primitive.ObjectID `bson:"_id,omitempty"`
+	Description string `bson:"description,omitempty"`
+	Status string `bson:"status,omitempty"`
 }
 
 func main() {
@@ -137,7 +142,7 @@ func main() {
 	} else {
 		log.Printf("Connected to MongoDB")
 	}
-	taskDb = db.Database("taskmaster").Collection("tasks")
+	taskdb = db.Database("taskmaster").Collection("tasks")
 
 	log.Printf("Starting gRPC listener on port %s", port)
 	if err := srv.Serve(lis); err != nil {

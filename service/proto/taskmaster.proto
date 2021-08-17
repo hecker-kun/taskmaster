@@ -5,11 +5,11 @@ package proto;
 option go_package = "./proto";
 
 service Taskmaster {
-  rpc createTask(Task) returns (TaskID);
-  rpc deleteTask(TaskID) returns (Empty);
-  rpc getTask(TaskID) returns (Task);
-  rpc deleteAllTasks(Empty) returns (Empty);
-  rpc getAllTasks(Empty) returns (TaskList);
+  rpc createTask(createTaskReq) returns (createTaskRes);
+  rpc deleteTask(deleteTaskReq) returns (deleteTaskRes);
+  rpc getTask(getTaskReq) returns (getTaskRes);
+  rpc deleteAllTasks(Empty) returns (deleteAllTasksRes);
+  rpc getAllTasks(getAllTasksReq) returns (stream getAllTasksRes);
 }
 
 message Task {
@@ -18,12 +18,38 @@ message Task {
   string id = 3;
 }
 
-message TaskID {
-  string value = 1;
+message createTaskReq {
+  Task task = 1;
 }
 
-message TaskList {
-  repeated Task task = 1;
+message createTaskRes {
+  Task task = 1;
+}
+
+message deleteTaskReq {
+  string id = 1;
+}
+
+message deleteTaskRes {
+  bool success = 1;
+}
+
+message getTaskReq {
+  string id = 1;
+}
+
+message getTaskRes {
+  Task task = 1;
+}
+
+message getAllTasksReq {}
+
+message getAllTasksRes {
+  Task task = 1;
+}
+
+message deleteAllTasksRes {
+  bool success = 1;
 }
 
 message Empty {}
