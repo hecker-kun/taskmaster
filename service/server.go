@@ -111,7 +111,31 @@ func (s *server) DeleteAllTasks(ctx context.Context, empty *pb.Empty) (*pb.Delet
 }
 
 func (s *server) GetAllTasks(req *pb.GetAllTasksReq, stream pb.Taskmaster_GetAllTasksServer) error {
-	panic("implement me")
+	data := &TaskObject{}
+
+	cursor, err := taskdb.Find(context.Background(), bson.M{})
+	if err != nil {
+		return status.Errorf(codes.Internal, fmt.Sprintf("unknown internal error: %v"), err)
+	}
+	defer cursor.Close(context.Background())
+
+	for cursor.Next(context.Background()) {
+		err := cursor.Decode(data)
+		if err != nil {
+			return status.Errorf(codes.Unavailable, fmt.Sprintf("could not decode data: %v"), err)
+		}
+
+		stream.Send(&pb.GetAllTasksRes{Task: &pb.Task{
+			Description: data.Description,
+			Status:      data.Status,
+			Id:          data.ID.Hex(),
+		}})
+	}
+
+	if err := cursor.Err(); err != nil {
+		return status.Errorf(codes.Internal, fmt.Sprintf("unknown cursor error: %v"), err)
+	}
+	return nil
 }
 
 type TaskObject struct {
