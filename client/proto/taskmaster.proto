@@ -16,6 +16,7 @@ message Task {
   string description = 1;
   string status = 2;
   string id = 3;
+  string taskid = 4;
 }
 
 message createTaskReq {

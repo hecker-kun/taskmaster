@@ -74,11 +74,11 @@ func (s *server) DeleteTask(ctx context.Context, req *pb.DeleteTaskReq) (*pb.Del
 }
 
 func (s *server) GetTask(ctx context.Context, req *pb.GetTaskReq) (*pb.GetTaskRes, error) {
-	tid, err := primitive.ObjectIDFromHex(req.GetId())
+	tid, err := primitive.ObjectIDFromHex(req.Id)
 	if err != nil {
 		return nil, status.Errorf(
 			codes.InvalidArgument,
-			fmt.Sprintf("Could not convert to ObjectID"),
+			fmt.Sprintf("Could not convert to ObjectID: "),
 			err,
 		)
 	}
@@ -95,6 +95,7 @@ func (s *server) GetTask(ctx context.Context, req *pb.GetTaskReq) (*pb.GetTaskRe
 			Description: data.Description,
 			Status:      data.Status,
 			Id:          tid.Hex(),
+			Taskid: 	 req.Id,
 		},
 	}
 
@@ -142,6 +143,7 @@ type TaskObject struct {
 	ID primitive.ObjectID `bson:"_id,omitempty"`
 	Description string `bson:"description,omitempty"`
 	Status string `bson:"status,omitempty"`
+	TaskID string `bson:"task_id,omitempty"`
 }
 
 func main() {
@@ -173,3 +175,5 @@ func main() {
 		log.Fatalf("failed to server: %v", err)
 	}
 }
+
+// TODO: Implement task management through the console
