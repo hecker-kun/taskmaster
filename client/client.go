@@ -4,9 +4,11 @@ import (
 	"context"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
-	"log"
 	"os"
+	"strconv"
 	pb "taskmaster/client/proto"
+
+	log "github.com/sirupsen/logrus"
 )
 
 const address = "localhost:9055"
@@ -31,49 +33,40 @@ func main() {
 				Aliases: []string{"c"},
 				Usage: "creates a new task",
 				Action: func(ctx *cli.Context) error {
-					description := ctx.Args().First()
-					status := ctx.Args().Get(1)
-					taskid := ctx.Args().Get(2)
+					text := ctx.Args().First()
 
-					r, err := c.CreateTask(context.Background(), &pb.CreateTaskReq{Task: &pb.Task{
-						Description: description,
-						Status:      status,
-						Taskid:      taskid,
-					}})
+					res, err := c.CreateTask(context.Background(), &pb.AddTask{
+						Text:   text,
+						Status: true,
+					})
 					if err != nil {
-						log.Fatalf("failed to create task: %v", err)
+						log.WithFields(log.Fields{
+							"package": "client",
+							"method": "CreateTask",
+						}).Fatalf("failed to create task: %v", err)
 					}
 
-					log.Println(r.String())
+					log.Println(res.String())
+
 					return nil
 				},
 			},
 			{
-				Name: "get",
-				Aliases: []string{"g"},
-				Usage: "returns the task with the specified ID",
+				Name: "delete",
+				Aliases: []string{"d", "del"},
+				Usage: "deletes the task with the specified ID",
 				Action: func(ctx *cli.Context) error {
-					taskid := ctx.Args().First()
-					r, err := c.GetTask(context.Background(), &pb.GetTaskReq{Id: taskid})
+					id := ctx.Args().First()
+					nid, _ := strconv.Atoi(id)
+
+					_, err := c.DeleteTask(context.Background(), &pb.DeleteParams{Id: int32(nid)})
 					if err != nil {
-						log.Fatalf("failed to get the task: %v", err)
+						log.WithFields(log.Fields{
+							"package": "client",
+							"method": "DeleteTask",
+						}).Fatalf("failed to delete the task: %v", err)
 					}
 
-					log.Println(r.String())
-					return nil
-				},
-			},
-			{
-				Name: "deleteall",
-				Aliases: []string{"dall"},
-				Usage: "removes all tasks",
-				Action: func(ctx *cli.Context) error {
-					_, err := c.DeleteAllTasks(context.Background(), &pb.Empty{})
-					if err != nil {
-						log.Fatalf("failed to delete all tasks: %v", err)
-					}
-
-					log.Println("all tasks deleted successfully")
 					return nil
 				},
 			},

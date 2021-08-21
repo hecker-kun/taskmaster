@@ -18,11 +18,11 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type TaskmasterClient interface {
-	CreateTask(ctx context.Context, in *CreateTaskReq, opts ...grpc.CallOption) (*CreateTaskRes, error)
-	DeleteTask(ctx context.Context, in *DeleteTaskReq, opts ...grpc.CallOption) (*DeleteTaskRes, error)
-	GetTask(ctx context.Context, in *GetTaskReq, opts ...grpc.CallOption) (*GetTaskRes, error)
-	DeleteAllTasks(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*DeleteAllTasksRes, error)
-	GetAllTasks(ctx context.Context, in *GetAllTasksReq, opts ...grpc.CallOption) (Taskmaster_GetAllTasksClient, error)
+	CreateTask(ctx context.Context, in *AddTask, opts ...grpc.CallOption) (*Task, error)
+	DeleteTask(ctx context.Context, in *DeleteParams, opts ...grpc.CallOption) (*Empty, error)
+	//rpc getTask(getTaskReq) returns (getTaskRes);
+	DeleteAllTasks(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
+	GetAllTasks(ctx context.Context, in *Empty, opts ...grpc.CallOption) (Taskmaster_GetAllTasksClient, error)
 }
 
 type taskmasterClient struct {
@@ -33,8 +33,8 @@ func NewTaskmasterClient(cc grpc.ClientConnInterface) TaskmasterClient {
 	return &taskmasterClient{cc}
 }
 
-func (c *taskmasterClient) CreateTask(ctx context.Context, in *CreateTaskReq, opts ...grpc.CallOption) (*CreateTaskRes, error) {
-	out := new(CreateTaskRes)
+func (c *taskmasterClient) CreateTask(ctx context.Context, in *AddTask, opts ...grpc.CallOption) (*Task, error) {
+	out := new(Task)
 	err := c.cc.Invoke(ctx, "/proto.Taskmaster/createTask", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -42,8 +42,8 @@ func (c *taskmasterClient) CreateTask(ctx context.Context, in *CreateTaskReq, op
 	return out, nil
 }
 
-func (c *taskmasterClient) DeleteTask(ctx context.Context, in *DeleteTaskReq, opts ...grpc.CallOption) (*DeleteTaskRes, error) {
-	out := new(DeleteTaskRes)
+func (c *taskmasterClient) DeleteTask(ctx context.Context, in *DeleteParams, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
 	err := c.cc.Invoke(ctx, "/proto.Taskmaster/deleteTask", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -51,17 +51,8 @@ func (c *taskmasterClient) DeleteTask(ctx context.Context, in *DeleteTaskReq, op
 	return out, nil
 }
 
-func (c *taskmasterClient) GetTask(ctx context.Context, in *GetTaskReq, opts ...grpc.CallOption) (*GetTaskRes, error) {
-	out := new(GetTaskRes)
-	err := c.cc.Invoke(ctx, "/proto.Taskmaster/getTask", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *taskmasterClient) DeleteAllTasks(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*DeleteAllTasksRes, error) {
-	out := new(DeleteAllTasksRes)
+func (c *taskmasterClient) DeleteAllTasks(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
 	err := c.cc.Invoke(ctx, "/proto.Taskmaster/deleteAllTasks", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -69,7 +60,7 @@ func (c *taskmasterClient) DeleteAllTasks(ctx context.Context, in *Empty, opts .
 	return out, nil
 }
 
-func (c *taskmasterClient) GetAllTasks(ctx context.Context, in *GetAllTasksReq, opts ...grpc.CallOption) (Taskmaster_GetAllTasksClient, error) {
+func (c *taskmasterClient) GetAllTasks(ctx context.Context, in *Empty, opts ...grpc.CallOption) (Taskmaster_GetAllTasksClient, error) {
 	stream, err := c.cc.NewStream(ctx, &Taskmaster_ServiceDesc.Streams[0], "/proto.Taskmaster/getAllTasks", opts...)
 	if err != nil {
 		return nil, err
@@ -85,7 +76,7 @@ func (c *taskmasterClient) GetAllTasks(ctx context.Context, in *GetAllTasksReq, 
 }
 
 type Taskmaster_GetAllTasksClient interface {
-	Recv() (*GetAllTasksRes, error)
+	Recv() (*Task, error)
 	grpc.ClientStream
 }
 
@@ -93,8 +84,8 @@ type taskmasterGetAllTasksClient struct {
 	grpc.ClientStream
 }
 
-func (x *taskmasterGetAllTasksClient) Recv() (*GetAllTasksRes, error) {
-	m := new(GetAllTasksRes)
+func (x *taskmasterGetAllTasksClient) Recv() (*Task, error) {
+	m := new(Task)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -105,11 +96,11 @@ func (x *taskmasterGetAllTasksClient) Recv() (*GetAllTasksRes, error) {
 // All implementations must embed UnimplementedTaskmasterServer
 // for forward compatibility
 type TaskmasterServer interface {
-	CreateTask(context.Context, *CreateTaskReq) (*CreateTaskRes, error)
-	DeleteTask(context.Context, *DeleteTaskReq) (*DeleteTaskRes, error)
-	GetTask(context.Context, *GetTaskReq) (*GetTaskRes, error)
-	DeleteAllTasks(context.Context, *Empty) (*DeleteAllTasksRes, error)
-	GetAllTasks(*GetAllTasksReq, Taskmaster_GetAllTasksServer) error
+	CreateTask(context.Context, *AddTask) (*Task, error)
+	DeleteTask(context.Context, *DeleteParams) (*Empty, error)
+	//rpc getTask(getTaskReq) returns (getTaskRes);
+	DeleteAllTasks(context.Context, *Empty) (*Empty, error)
+	GetAllTasks(*Empty, Taskmaster_GetAllTasksServer) error
 	mustEmbedUnimplementedTaskmasterServer()
 }
 
@@ -117,19 +108,16 @@ type TaskmasterServer interface {
 type UnimplementedTaskmasterServer struct {
 }
 
-func (UnimplementedTaskmasterServer) CreateTask(context.Context, *CreateTaskReq) (*CreateTaskRes, error) {
+func (UnimplementedTaskmasterServer) CreateTask(context.Context, *AddTask) (*Task, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateTask not implemented")
 }
-func (UnimplementedTaskmasterServer) DeleteTask(context.Context, *DeleteTaskReq) (*DeleteTaskRes, error) {
+func (UnimplementedTaskmasterServer) DeleteTask(context.Context, *DeleteParams) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteTask not implemented")
 }
-func (UnimplementedTaskmasterServer) GetTask(context.Context, *GetTaskReq) (*GetTaskRes, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetTask not implemented")
-}
-func (UnimplementedTaskmasterServer) DeleteAllTasks(context.Context, *Empty) (*DeleteAllTasksRes, error) {
+func (UnimplementedTaskmasterServer) DeleteAllTasks(context.Context, *Empty) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAllTasks not implemented")
 }
-func (UnimplementedTaskmasterServer) GetAllTasks(*GetAllTasksReq, Taskmaster_GetAllTasksServer) error {
+func (UnimplementedTaskmasterServer) GetAllTasks(*Empty, Taskmaster_GetAllTasksServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetAllTasks not implemented")
 }
 func (UnimplementedTaskmasterServer) mustEmbedUnimplementedTaskmasterServer() {}
@@ -146,7 +134,7 @@ func RegisterTaskmasterServer(s grpc.ServiceRegistrar, srv TaskmasterServer) {
 }
 
 func _Taskmaster_CreateTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateTaskReq)
+	in := new(AddTask)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -158,13 +146,13 @@ func _Taskmaster_CreateTask_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: "/proto.Taskmaster/createTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TaskmasterServer).CreateTask(ctx, req.(*CreateTaskReq))
+		return srv.(TaskmasterServer).CreateTask(ctx, req.(*AddTask))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _Taskmaster_DeleteTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteTaskReq)
+	in := new(DeleteParams)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -176,25 +164,7 @@ func _Taskmaster_DeleteTask_Handler(srv interface{}, ctx context.Context, dec fu
 		FullMethod: "/proto.Taskmaster/deleteTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TaskmasterServer).DeleteTask(ctx, req.(*DeleteTaskReq))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _Taskmaster_GetTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetTaskReq)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(TaskmasterServer).GetTask(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/proto.Taskmaster/getTask",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TaskmasterServer).GetTask(ctx, req.(*GetTaskReq))
+		return srv.(TaskmasterServer).DeleteTask(ctx, req.(*DeleteParams))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -218,7 +188,7 @@ func _Taskmaster_DeleteAllTasks_Handler(srv interface{}, ctx context.Context, de
 }
 
 func _Taskmaster_GetAllTasks_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(GetAllTasksReq)
+	m := new(Empty)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -226,7 +196,7 @@ func _Taskmaster_GetAllTasks_Handler(srv interface{}, stream grpc.ServerStream) 
 }
 
 type Taskmaster_GetAllTasksServer interface {
-	Send(*GetAllTasksRes) error
+	Send(*Task) error
 	grpc.ServerStream
 }
 
@@ -234,7 +204,7 @@ type taskmasterGetAllTasksServer struct {
 	grpc.ServerStream
 }
 
-func (x *taskmasterGetAllTasksServer) Send(m *GetAllTasksRes) error {
+func (x *taskmasterGetAllTasksServer) Send(m *Task) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -252,10 +222,6 @@ var Taskmaster_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "deleteTask",
 			Handler:    _Taskmaster_DeleteTask_Handler,
-		},
-		{
-			MethodName: "getTask",
-			Handler:    _Taskmaster_GetTask_Handler,
 		},
 		{
 			MethodName: "deleteAllTasks",
