@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
+	"io"
 	"os"
 	"strconv"
 	pb "taskmaster/client/proto"
@@ -12,8 +13,6 @@ import (
 )
 
 const address = "localhost:9055"
-
-// TODO: Добавить поле ID, через который можно будет получать задачу методом GetTask()
 
 func main() {
 	conn, err := grpc.Dial(address, grpc.WithInsecure())
@@ -70,6 +69,48 @@ func main() {
 					return nil
 				},
 			},
+			{
+				Name: "delete all",
+				Aliases: []string{"dall"},
+				Usage: "removes all tasks from the collection",
+				Action: func(ctx *cli.Context) error {
+					_, err := c.DeleteAllTasks(context.Background(), &pb.Empty{})
+					if err != nil {
+						log.WithFields(log.Fields{
+							"package": "client",
+							"method": "DeleteAllTasks",
+						}).Fatalf("failed to delete all tasks: %v", err)
+					}
+
+					return nil
+				},
+			},
+			{
+				Name: "get all",
+				Aliases: []string{"gall", "getall", "list"},
+				Usage: "lists all tasks",
+				Action: func(ctx *cli.Context) error {
+					stream, err := c.GetAllTasks(context.Background(), &pb.Empty{})
+					if err != nil {
+						log.WithFields(log.Fields{
+							"package": "client",
+							"method": "GetAllTasks",
+						}).Fatalf("failed to get the task list: %v", err)
+					}
+
+					for {
+						task, err := stream.Recv()
+						if err == io.EOF {
+							log.Println("no more tasks")
+						}
+						if err != nil {
+							log.Fatalf("internal error: %v", err)
+						}
+
+						log.Println(task.Text, ": ", task.Status)
+					}
+				},
+			},
 		},
 	}
 
@@ -77,57 +118,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	//task := pb.Task{
-	//	Description: "First",
-	//	Status:      "Canceled",
-	//	Id:          "001",
-	//}
-	//r, err := c.CreateTask(ctx, &pb.CreateTaskReq{Task: &task})
-	//if err != nil {
-	//	log.Fatalf("failed to create the task: %v", err)
-	//}
-	//log.Printf(r.String())
-
-	// Test call GetTask()
-	//t, err := c.GetTask(ctx, &pb.GetTaskReq{Id: r.Task.GetId()})
-	//if err != nil {
-	//	log.Fatalf("failed to get the task: %v", err)
-	//}
-	//log.Printf(t.String())
-
-	// Test call DeleteTask()
-	//_, err = c.DeleteTask(ctx, &pb.DeleteTaskReq{Id: r.Task.GetId()})
-	//if err != nil {
-	//	log.Fatalf("failed to delete the task: %v", err)
-	//}
-	//log.Printf("the task was deleted successfully")
-
-	// Test call DeleteAllTasks()
-	//_, err = c.DeleteAllTasks(ctx, &pb.Empty{})
-	//if err != nil {
-	//	log.Fatalf("failed to delete all tasks")
-	//}
-	//log.Printf("all tasks have been deleted")
-
-	// Test call GetAllTasks()
-	//req := &pb.GetAllTasksReq{}
-	//
-	//stream, err := c.GetAllTasks(ctx, req)
-	//if err != nil {
-	//	return
-	//}
-	//
-	//for {
-	//	res, err := stream.Recv()
-	//	if err == io.EOF {
-	//		log.Println("no more tasks")
-	//		break
-	//	}
-	//	if err != nil {
-	//		return
-	//	}
-	//
-	//	log.Println(res.GetTask())
-	//}
 }

@@ -3,9 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
-	"net"
-
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -13,6 +10,8 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"log"
+	"net"
 
 	"taskmaster/service/proto"
 )
@@ -57,18 +56,48 @@ func (s *server) CreateTask(ctx context.Context, taskParams *proto.AddTask) (*pr
 func (s *server) DeleteTask(ctx context.Context, params *proto.DeleteParams) (*proto.Empty, error) {
 	_, err := taskdb.DeleteOne(ctx, bson.M{"task_id": params.Id})
 	if err != nil {
-		status.Errorf(codes.Internal, fmt.Sprintf("Internal error: %v"), err)
+		return nil, status.Errorf(codes.Internal, fmt.Sprintf("internal error: %v"), err)
 	}
 
 	return &proto.Empty{}, nil
 }
 
 func (s *server) DeleteAllTasks(ctx context.Context, empty *proto.Empty) (*proto.Empty, error) {
-	panic("implement me")
+	_, err := taskdb.DeleteMany(ctx, bson.M{})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, fmt.Sprintf("internal error: %v", err))
+	}
+
+	return &proto.Empty{}, nil
 }
 
-func (s *server) GetAllTasks(empty *proto.Empty, tasksServer proto.Taskmaster_GetAllTasksServer) error {
-	panic("implement me")
+func (s *server) GetAllTasks(empty *proto.Empty, stream proto.Taskmaster_GetAllTasksServer) error {
+	data := &TaskObject{}
+
+	cursor, err := taskdb.Find(context.Background(), bson.M{})
+	if err != nil {
+		return status.Errorf(codes.Internal, fmt.Sprintf("internal error: %v", err))
+	}
+	defer cursor.Close(context.Background())
+
+	for cursor.Next(context.Background()) {
+		err := cursor.Decode(data)
+		if err != nil {
+			return status.Errorf(codes.Unavailable, fmt.Sprintf("could not decode data: %v", err))
+		}
+
+		stream.Send(&proto.Task{
+			Text:   data.Text,
+			Status: data.Status,
+			Id:     data.TaskID,
+		})
+	}
+	
+	if err := cursor.Err(); err != nil {
+		return status.Errorf(codes.Internal, fmt.Sprintf("internal error: %v", err))
+	}
+
+	return nil
 }
 
 type TaskObject struct {
