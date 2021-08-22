@@ -100,6 +100,17 @@ func (s *server) GetAllTasks(empty *proto.Empty, stream proto.Taskmaster_GetAllT
 	return nil
 }
 
+func (s *server) CompleteTask(ctx context.Context, params *proto.CompleteParams) (*proto.Empty, error) {
+	filter := bson.M{"task_id": params.Id}
+
+	_, err := taskdb.UpdateOne(ctx, filter, bson.M{"$set": bson.M{"status": false}})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "internal error: %v", err)
+	}
+
+	return &proto.Empty{}, nil
+}
+
 type TaskObject struct {
 	ID     primitive.ObjectID `bson:"_id,omitempty"`
 	Text   string             `bson:"description,omitempty"`

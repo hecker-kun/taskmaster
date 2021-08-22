@@ -20,9 +20,9 @@ const _ = grpc.SupportPackageIsVersion7
 type TaskmasterClient interface {
 	CreateTask(ctx context.Context, in *AddTask, opts ...grpc.CallOption) (*Task, error)
 	DeleteTask(ctx context.Context, in *DeleteParams, opts ...grpc.CallOption) (*Empty, error)
-	//rpc getTask(getTaskReq) returns (getTaskRes);
 	DeleteAllTasks(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
 	GetAllTasks(ctx context.Context, in *Empty, opts ...grpc.CallOption) (Taskmaster_GetAllTasksClient, error)
+	CompleteTask(ctx context.Context, in *CompleteParams, opts ...grpc.CallOption) (*Empty, error)
 }
 
 type taskmasterClient struct {
@@ -92,15 +92,24 @@ func (x *taskmasterGetAllTasksClient) Recv() (*Task, error) {
 	return m, nil
 }
 
+func (c *taskmasterClient) CompleteTask(ctx context.Context, in *CompleteParams, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/proto.Taskmaster/completeTask", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // TaskmasterServer is the server API for Taskmaster service.
 // All implementations must embed UnimplementedTaskmasterServer
 // for forward compatibility
 type TaskmasterServer interface {
 	CreateTask(context.Context, *AddTask) (*Task, error)
 	DeleteTask(context.Context, *DeleteParams) (*Empty, error)
-	//rpc getTask(getTaskReq) returns (getTaskRes);
 	DeleteAllTasks(context.Context, *Empty) (*Empty, error)
 	GetAllTasks(*Empty, Taskmaster_GetAllTasksServer) error
+	CompleteTask(context.Context, *CompleteParams) (*Empty, error)
 	mustEmbedUnimplementedTaskmasterServer()
 }
 
@@ -119,6 +128,9 @@ func (UnimplementedTaskmasterServer) DeleteAllTasks(context.Context, *Empty) (*E
 }
 func (UnimplementedTaskmasterServer) GetAllTasks(*Empty, Taskmaster_GetAllTasksServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetAllTasks not implemented")
+}
+func (UnimplementedTaskmasterServer) CompleteTask(context.Context, *CompleteParams) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CompleteTask not implemented")
 }
 func (UnimplementedTaskmasterServer) mustEmbedUnimplementedTaskmasterServer() {}
 
@@ -208,6 +220,24 @@ func (x *taskmasterGetAllTasksServer) Send(m *Task) error {
 	return x.ServerStream.SendMsg(m)
 }
 
+func _Taskmaster_CompleteTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CompleteParams)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(TaskmasterServer).CompleteTask(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/proto.Taskmaster/completeTask",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(TaskmasterServer).CompleteTask(ctx, req.(*CompleteParams))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Taskmaster_ServiceDesc is the grpc.ServiceDesc for Taskmaster service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -226,6 +256,10 @@ var Taskmaster_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "deleteAllTasks",
 			Handler:    _Taskmaster_DeleteAllTasks_Handler,
+		},
+		{
+			MethodName: "completeTask",
+			Handler:    _Taskmaster_CompleteTask_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

@@ -7,9 +7,9 @@ option go_package = "./proto";
 service Taskmaster {
   rpc createTask(AddTask) returns (Task);
   rpc deleteTask(DeleteParams) returns (Empty);
-  //rpc getTask(getTaskReq) returns (getTaskRes);
   rpc deleteAllTasks(Empty) returns (Empty);
   rpc getAllTasks(Empty) returns (stream Task);
+  rpc completeTask(CompleteParams) returns (Empty);
 }
 
 message Task {
@@ -24,6 +24,10 @@ message AddTask {
 }
 
 message DeleteParams {
+  int32 id = 1;
+}
+
+message CompleteParams {
   int32 id = 1;
 }
 

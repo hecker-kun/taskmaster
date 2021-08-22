@@ -38,7 +38,7 @@ func main() {
 
 					res, err := c.CreateTask(context.Background(), &pb.AddTask{
 						Text:   text,
-						Status: false,
+						Status: true,
 					})
 					if err != nil {
 						log.WithFields(log.Fields{
@@ -116,6 +116,21 @@ func main() {
 							color.Red.Printf("%s\n", task.Text)
 						}
 					}
+				},
+			},
+			{
+				Name: "complete task",
+				Aliases: []string{"complete", "done"},
+				Usage: "completes the task, setting its status to false",
+				Action: func(ctx *cli.Context) error {
+					sid := ctx.Args().First()
+					id, err := strconv.Atoi(sid)
+					if err != nil {
+						log.Fatalf("cannot convert id to int: %v", err)
+					}
+					_, err = c.CompletedTask(context.Background(), &pb.CompleteParams{Id: int32(id)})
+
+					return nil
 				},
 			},
 		},
