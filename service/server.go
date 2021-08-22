@@ -140,5 +140,3 @@ func main() {
 		log.Fatalf("failed to server: %v", err)
 	}
 }
-
-// TODO: Implement task management through the console

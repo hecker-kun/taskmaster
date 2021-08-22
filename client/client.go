@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/urfave/cli/v2"
 	"google.golang.org/grpc"
 	"io"
@@ -10,6 +11,7 @@ import (
 	pb "taskmaster/client/proto"
 
 	log "github.com/sirupsen/logrus"
+	"gopkg.in/gookit/color.v1"
 )
 
 const address = "localhost:9055"
@@ -36,7 +38,7 @@ func main() {
 
 					res, err := c.CreateTask(context.Background(), &pb.AddTask{
 						Text:   text,
-						Status: true,
+						Status: false,
 					})
 					if err != nil {
 						log.WithFields(log.Fields{
@@ -106,8 +108,13 @@ func main() {
 						if err != nil {
 							log.Fatalf("internal error: %v", err)
 						}
-
-						log.Println(task.Text, ": ", task.Status)
+						if task.Status == true {
+							fmt.Print(task.Id, ": ")
+							color.Yellow.Printf("%s\n", task.Text)
+						} else {
+							fmt.Print(task.Id, ": ")
+							color.Red.Printf("%s\n", task.Text)
+						}
 					}
 				},
 			},
